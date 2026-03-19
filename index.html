@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strategic Mastery Ecosystem | EUN MI PARK, ED.D.</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Dependencies in strict order for stability -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        .recharts-text.recharts-polar-angle-axis-tick-value { cursor: pointer; transition: all 0.2s; }
+        .recharts-text.recharts-polar-angle-axis-tick-value:hover { font-weight: 900; filter: brightness(0.8); }
+        .modal-animate { animation: zoomIn 0.2s ease-out; }
+        @keyframes zoomIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .pulse-live { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.02); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        
+        /* --- PRINT OPTIMIZATIONS --- */
+        @media print {
+            @page {
+                size: landscape;
+                margin: 0.4in;
+            }
+            body {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                background-color: #f8fafc !important;
+            }
+            /* Hide interactive/live elements in the static PDF */
+            .pulse-live, .print-hide {
+                display: none !important;
+            }
+            /* Ensure charts draw backgrounds properly in print */
+            .recharts-wrapper {
+                max-width: 100% !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+        const { 
+            AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+            RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, 
+            ReferenceLine, Label, Legend 
+        } = Recharts;
+
+        // Custom SVG Icon Mapper
+        const Icon = ({ name, className = "w-4 h-4", style = {} }) => {
+            const icons = {
+                award: <><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></>,
+                activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
+                stethoscope: <path d="M4.8 2.3A.3.3 0 1 0 5 2h-.2ZM3 2h12M14 2v4a2 2 0 1 1-4 0V2m4 13a2 2 0 1 0-4 0M5 12V6a2 2 0 1 0-4 0v8a4.4 4.4 0 0 0 5.2 4.3" />,
+                target: <><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></>,
+                "check-circle-2": <><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" /><path d="m9 12 2 2 4-4" /></>,
+                filter: <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />,
+                "shield-check": <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="m9 12 2 2 4-4" /></>,
+                zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />,
+                "trending-up": <><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></>,
+                info: <><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></>,
+                x: <><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></>,
+                "clipboard-check": <><rect width="8" height="4" x="8" y="2" rx="1" ry="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="m9 14 2 2 4-4" /></>,
+                workflow: <><rect width="8" height="8" x="3" y="3" rx="2" /><path d="M7 11v4a2 2 0 0 0 2 2h4" /><rect width="8" height="8" x="13" y="13" rx="2" /></>,
+                search: <><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></>,
+                "chevron-right": <polyline points="9 18 15 12 9 6" />,
+                "graduation-cap": <><path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" /></>,
+                briefcase: <><rect width="20" height="14" x="2" y="7" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></>,
+                globe: <><circle cx="12" cy="12" r="10" /><path d="M2 12h20" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></>,
+                laptop: <><rect width="18" height="12" x="3" y="4" rx="2" ry="2" /><line x1="2" y1="20" x2="22" y2="20" /></>,
+                "message-square": <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
+                "heart-handshake": <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />,
+                "user-check": <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><polyline points="17 11 19 13 23 9" /></>,
+                "brain-circuit": <><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .52 5.586 3 3 0 1 0 5.83 1.519A4 4 0 0 0 12 15" /><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.52 5.586 3 3 0 1 1-5.83 1.519A4 4 0 0 1 12 15" /><path d="M9 13a4.5 4.5 0 0 0 3-4" /><path d="M12 13V5" /></>,
+                eye: <><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></>,
+                "arrow-up-right": <><line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" /></>,
+                "book-open": <><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></>
+            };
+            return (
+                <svg className={className} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    {icons[name] || <circle cx="12" cy="12" r="10" />}
+                </svg>
+            );
+        };
+
+        const KPI_DETAILS = {
+            "Proj. 1st-Pass COMLEX-USA": { subMetrics: [{ name: "COMSAE Correlation", value: "94.2%" }, { name: "Internal Diagnostic", value: "97.1%" }], narrative: "Multivariable regression based on M2 pre-clerkship exam performance and COMSAE diagnostics.", color: "emerald", icon: "award" },
+            "M2 Readiness Exam": { subMetrics: [{ name: "Systems Cumulative", value: "92.4%" }, { name: "OMM Practical Mastery", value: "89.8%" }], narrative: "Summative pre-clerkship gatekeeper exam ensuring foundational science and OMT competency.", color: "amber", icon: "activity" },
+            "Clinical EPA Mastery": { subMetrics: [{ name: "EPA 1-13 Coverage", value: "100%" }, { name: "Indirect Supervision Rate", value: "93.0%" }], narrative: "Direct preceptor observations mapping student transition to autonomous clinical performance.", color: "sky", icon: "stethoscope" },
+            "FOMCD 2026 Mastery Index": { subMetrics: [{ name: "Aggregate Pillar Index", value: "93.5%" }], narrative: "Composite mastery grade across all 8 NBOME domains and institutional highlights.", color: "indigo", icon: "target" },
+            "CQI Loop Resolution": { subMetrics: [{ name: "Interventions Verified", value: "37" }, { name: "Loop Resolution Velocity", value: "+15%" }], narrative: "Institutional velocity in closing assessment loops through verified curricular improvements.", color: "emerald", icon: "check-circle-2" }
+        };
+
+        const RADAR_STRATEGIES = {
+            'D1: Osteopathic Principles & OMT': { title: "OPP & OMT Mastery Profile", strategies: ["Longitudinal OMT Practical Logs", "Physical Exam Proficiency Rubrics", "SIMIQ Clinical Skills Labs"], sources: ["ExamSoft Practical Logs", "SIMIQ Practical Reports"], mission: "Body, Mind, Spirit Integration" },
+            'D2: Osteopathic Patient Care': { title: "Patient Care Assessment Profile", strategies: ["Comprehensive Summative OSCEs", "EPA Mastery Level Logs", "Direct Observation (Mini-CEX)"], sources: ["SIMIQ Portal Data", "Preceptor Clinical Evals"], mission: "Finding Health Clinical Excellence" },
+            'D3: Application of Knowledge': { title: "Medical Knowledge Profile", strategies: ["High-Stakes Summative MCQs", "COMSAE Phase 1 Diagnostics", "Case-Based MCQ (LEO) Drills"], sources: ["ExamSoft Performance Analytics", "NBOME Benchmark Reports"], mission: "Foundational Osteopathic Knowledge" },
+            'D4: Practice-Based Learning and Improvement': { title: "Learning & Practice Habit Profile", strategies: ["OSCE Self-Correction Dashboards", "Mastery Portfolios", "LAP Resolution Tracker"], sources: ["Longitudinal Portfolios", "CQI Self-Audit Logs"], mission: "Lifelong Learning Excellence" },
+            'D5: Interpersonal & Comm. Skills': { title: "Communication Mastery Profile", strategies: ["SP Empathy Rubrics", "360° Interprofessional Feedback", "Patient Communication Video Review"], sources: ["SIMIQ Video Analysis", "SP Assessment Rubrics"], mission: "Humanistic Patient Partnership" },
+            'D6: Professionalism & Compassion': { title: "Professional Evolution Profile", strategies: ["Bio-Psycho-Social-Spiritual Evals", "Resilience Metrics", "Ethical Reasoning Scenarios"], sources: ["Faculty Feedback Forms", "Self-Care Reflection Logs"], mission: "Compassionate Provider Identity" },
+            'D7: Systems-Based Practice': { title: "Practice Environmental Profile", strategies: ["Rural Clinic SDOH Project Rubrics", "IPP Teamwork Logs", "Finding Health Systems Audits"], sources: ["Rural Community Site Evals", "IPP Collaborative Matrix"], mission: "Finding Health: Mission Aligned" },
+            'D6.10: Digital Intelligence *': { title: "Digital Intelligence Profile", strategies: ["AI-Scribe Accuracy Labs", "Telehealth Performance OSCEs", "EHR Workflow Proficiency Checks"], sources: ["Digital Literacy Tests", "SIMIQ Telehealth Modules"], mission: "Future-Ready Physician Evolution" }
+        };
+
+        const RAW_LONG_DATA = [
+            { year: '2016', oppIntegration: 62, digitalIntel: 15, sdoh: 38, compassion: 78 },
+            { year: '2017', oppIntegration: 63, digitalIntel: 18, sdoh: 40, compassion: 79 },
+            { year: '2018', oppIntegration: 65, digitalIntel: 20, sdoh: 42, compassion: 80 },
+            { year: '2019', oppIntegration: 66, digitalIntel: 22, sdoh: 44, compassion: 81 },
+            { year: '2020', oppIntegration: 68, digitalIntel: 42, sdoh: 48, compassion: 83 }, 
+            { year: '2021', oppIntegration: 70, digitalIntel: 48, sdoh: 52, compassion: 82 },
+            { year: '2022', oppIntegration: 72, digitalIntel: 52, sdoh: 55, compassion: 84 },
+            { year: '2023', oppIntegration: 74, digitalIntel: 58, sdoh: 60, compassion: 85 },
+            { year: '2024', oppIntegration: 88, digitalIntel: 78, sdoh: 82, compassion: 90 }, 
+            { year: '2025', oppIntegration: 92, digitalIntel: 86, sdoh: 90, compassion: 93 },
+            { year: '2026', oppIntegration: 96, digitalIntel: 94, sdoh: 95, compassion: 95 }, 
+        ];
+
+        // The exact colors used across the "Visual Thread"
+        const COLORS = {
+            purple: "#8a2be2", // D1, D2, D3
+            pink: "#e022df",   // D5, D6
+            green: "#15803d",  // D7
+            blue: "#00bfff",   // D6.10
+            cobalt: "#0047AB", // D4
+            slate: "#475569"   // Standard Default
+        };
+
+        const App = () => {
+            const [activeCohort, setActiveCohort] = useState("Class of 2027 (All)");
+            const [selectedDetail, setSelectedDetail] = useState(null);
+            const [selectedRadarDomain, setSelectedRadarDomain] = useState(null);
+            const [isFilterOpen, setIsFilterOpen] = useState(false);
+            const [isAccreditationOpen, setIsAccreditationOpen] = useState(false);
+
+            const cohortMetrics = useMemo(() => {
+                switch (activeCohort) {
+                    case "Class of 2026": return { comlex: "98.8%", comlexStatus: "Peak", readiness: "94.2%", epa: "96%", index: "95.1%", cqi: "91.0%", radar: [98, 97, 94, 92, 95, 96, 95, 93], sdohMod: 1.0, compassionMod: 1.05 };
+                    case "Rural Health Track (M2)": return { comlex: "95.4%", comlexStatus: "High", readiness: "92.1%", epa: "95%", index: "94.8%", cqi: "89.0%", radar: [99, 96, 91, 93, 94, 97, 99, 88], sdohMod: 1.25, compassionMod: 1.1 };
+                    case "ASPIRE Program Cohort": return { comlex: "91.2%", comlexStatus: "Target", readiness: "88.4%", epa: "89%", index: "90.5%", cqi: "95.0%", radar: [89, 90, 87, 95, 92, 94, 91, 89], sdohMod: 0.9, compassionMod: 1.0 };
+                    default: return { comlex: "96.2%", comlexStatus: "High", readiness: "91.4%", epa: "93%", index: "93.5%", cqi: "88.0%", radar: [96, 94, 91, 89, 93, 95, 96, 94], sdohMod: 1.0, compassionMod: 1.0 };
+                }
+            }, [activeCohort]);
+
+            const longitudinalData = useMemo(() => RAW_LONG_DATA.map(d => ({
+                ...d, sdoh: Math.min(100, Math.round(d.sdoh * cohortMetrics.sdohMod)),
+                compassion: Math.min(100, Math.round(d.compassion * cohortMetrics.compassionMod))
+            })), [cohortMetrics]);
+
+            const competencyRadarData = useMemo(() => [
+                { subject: 'D1: Osteopathic Principles & OMT', A: cohortMetrics.radar[0] },
+                { subject: 'D2: Osteopathic Patient Care', A: cohortMetrics.radar[1] },
+                { subject: 'D3: Application of Knowledge', A: cohortMetrics.radar[2] },
+                { subject: 'D4: Practice-Based Learning and Improvement', A: cohortMetrics.radar[3] },
+                { subject: 'D5: Interpersonal & Comm. Skills', A: cohortMetrics.radar[4] },
+                { subject: 'D6: Professionalism & Compassion', A: cohortMetrics.radar[5] },
+                { subject: 'D7: Systems-Based Practice', A: cohortMetrics.radar[6] },
+                { subject: 'D6.10: Digital Intelligence *', A: cohortMetrics.radar[7] }
+            ], [cohortMetrics]);
+
+            return (
+                <div className="min-h-screen bg-slate-50 p-6 relative print:bg-white print:p-0">
+                    
+                    {/* Modals Layer (Hidden from print) */}
+                    <div className="print-hide">
+                        {isFilterOpen && (
+                            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md transition-all">
+                                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 modal-animate">
+                                    <div className="p-6 bg-slate-50 border-b flex justify-between items-center">
+                                        <div className="flex items-center gap-3"><div className="p-2 bg-indigo-600 text-white rounded-lg"><Icon name="filter" /></div><h3 className="font-black text-slate-900 uppercase tracking-tight">Cohort Selection Matrix</h3></div>
+                                        <button onClick={() => setIsFilterOpen(false)}><Icon name="x" className="w-5 h-5 text-slate-400" /></button>
+                                    </div>
+                                    <div className="p-8 space-y-3">
+                                        {["Class of 2026", "Class of 2027 (All)", "Rural Health Track (M2)", "ASPIRE Program Cohort"].map(c => (
+                                            <button key={c} onClick={() => { setActiveCohort(c); setIsFilterOpen(false); }} className={`flex items-center justify-between w-full p-4 rounded-xl border-2 transition-all ${activeCohort === c ? 'border-indigo-600 bg-indigo-50 font-black' : 'border-slate-100 hover:border-slate-200 text-slate-500'}`}>
+                                                <span>{c}</span>{activeCohort === c ? <Icon name="check-circle-2" className="w-4 h-4 text-indigo-600" /> : <Icon name="chevron-right" />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {isAccreditationOpen && (
+                            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md transition-all">
+                                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-200 modal-animate">
+                                    <div className="p-6 bg-emerald-900 text-white flex justify-between items-center">
+                                        <div className="flex items-center gap-3"><Icon name="shield-check" className="w-5 h-5" /><div><h3 className="font-black text-white uppercase tracking-tight">COCA Standard Mapping</h3><p className="text-[10px] text-emerald-300 uppercase tracking-widest">FOMCD 2026 Alignment</p></div></div>
+                                        <button onClick={() => setIsAccreditationOpen(false)}><Icon name="x" className="w-6 h-6" /></button>
+                                    </div>
+                                    <div className="p-8 max-h-[60vh] overflow-y-auto space-y-4">
+                                        {[{ s: "6.4", t: "Core Competencies", e: "Live radar tracking of D1-D7 mastery levels with validation from SIMIQ/ExamSoft." }, { s: "7.1", t: "Assessment Strategy", e: "Board readiness models using M2 diagnostics to predict Level 1 pass rates." }, { s: "12.1", t: "Student Well-being", e: "Measuring longitudinal Resilience & Self-Care within the Professional Evolution Pillar." }].map((item, i) => (
+                                            <div key={i} className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div className="flex items-center gap-2"><span className="bg-emerald-100 text-emerald-700 font-black text-xs px-2 py-1 rounded">Element {item.s}</span><h4 className="font-black text-slate-800 text-sm">{item.t}</h4></div>
+                                                    <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full uppercase">Compliant</span>
+                                                </div>
+                                                <p className="text-xs text-slate-500 font-medium leading-relaxed">{item.evidence}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="p-4 bg-slate-50 border-t flex justify-center"><button onClick={() => setIsAccreditationOpen(false)} className="text-[10px] font-black text-emerald-700 uppercase flex items-center gap-2 hover:underline"><Icon name="clipboard-check" className="w-3 h-3" /> Review Complete</button></div>
+                                </div>
+                            </div>
+                        )}
+
+                        {selectedDetail && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all">
+                                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-white/20 modal-animate">
+                                    <div className={`p-6 flex justify-between items-start ${selectedDetail.highlight ? 'bg-[#064e3b]' : 'bg-slate-50 border-b'}`}>
+                                        <div className="flex gap-4"><div className={`p-3 rounded-2xl ${selectedDetail.highlight ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white shadow-sm text-indigo-600 border'}`}><Icon name={selectedDetail.icon} className="w-6 h-6" /></div>
+                                        <div><h4 className={`text-xs font-black uppercase tracking-widest ${selectedDetail.highlight ? 'text-emerald-200/60' : 'text-slate-400'}`}>Strategic Performance Detail</h4><h3 className={`text-xl font-black ${selectedDetail.highlight ? 'text-white' : 'text-slate-900'}`}>{selectedDetail.title}</h3></div></div>
+                                        <button onClick={() => setSelectedDetail(null)} className={`p-2 rounded-full transition-colors ${selectedDetail.highlight ? 'text-emerald-100 hover:bg-emerald-500/20' : 'text-slate-400 hover:bg-slate-100'}`}><Icon name="x" className="w-5 h-5" /></button>
+                                    </div>
+                                    <div className="p-8">
+                                        <div className="grid grid-cols-2 gap-4 mb-6 text-center">
+                                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Current Metric</span><span className="text-3xl font-black">{selectedDetail.value}</span></div>
+                                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Target Status</span><span className="text-sm font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full mt-1 inline-block">{selectedDetail.status}</span></div>
+                                        </div>
+                                        <div className="mb-6"><h5 className="text-[10px] font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2"><Icon name="trending-up" className="w-3 h-3 text-indigo-500" /> Pillar Analytics</h5>
+                                            <div className="space-y-2">{selectedDetail.subMetrics?.map((m, i) => (<div key={i} className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-100 shadow-sm"><span className="text-xs font-bold text-slate-600">{m.name}</span><span className="text-xs font-black">{m.value}</span></div>))}</div>
+                                        </div>
+                                        <p className="text-xs text-slate-500 italic bg-indigo-50/50 p-4 rounded-xl border border-indigo-100/50 leading-relaxed">"{selectedDetail.narrative}"</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {selectedRadarDomain && (
+                            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md transition-all">
+                                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden modal-animate border border-slate-200">
+                                    <div className="p-6 bg-slate-50 border-b flex justify-between items-center">
+                                        <div className="flex items-center gap-3"><div className="p-2.5 bg-indigo-600 text-white rounded-xl"><Icon name="clipboard-check" /></div><div><h3 className="text-sm font-black">{RADAR_STRATEGIES[selectedRadarDomain].title}</h3><p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Ecosystem Mastery Profile</p></div></div>
+                                        <button onClick={() => setSelectedRadarDomain(null)}><Icon name="x" className="w-5 h-5 text-slate-400" /></button>
+                                    </div>
+                                    <div className="p-8 space-y-6">
+                                        <div><div className="flex items-center gap-2 mb-3 font-black text-[10px] uppercase text-slate-800"><Icon name="workflow" className="w-3.5 h-3.5 text-indigo-500" /><span>Strategy Triad</span></div>
+                                            <div className="space-y-2">{RADAR_STRATEGIES[selectedRadarDomain].strategies.map((s, i) => (<div key={i} className="flex items-center gap-2 bg-indigo-50/50 p-2 rounded-lg border border-indigo-100 text-[11px] font-bold"><div className="w-1 h-1 bg-indigo-500 rounded-full"></div>{s}</div>))}</div>
+                                        </div>
+                                        <div><div className="flex items-center gap-2 mb-3 font-black text-[10px] uppercase text-slate-800"><Icon name="search" className="w-3.5 h-3.5 text-indigo-500" /><span>Validated Evidence Sources</span></div>
+                                            <div className="flex flex-wrap gap-2">{RADAR_STRATEGIES[selectedRadarDomain].sources.map((src, i) => (<span key={i} className="bg-slate-100 text-slate-600 text-[10px] font-black px-2 py-1 rounded border border-slate-200">{src}</span>))}</div>
+                                        </div>
+                                        <div className="pt-4 border-t border-slate-100 italic text-[11px] text-emerald-700 leading-tight">"{RADAR_STRATEGIES[selectedRadarDomain].mission}"</div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* --- PAGE 1 WRAPPER (Keeps Header, KPIs, and Charts together) --- */}
+                    <div className="print:break-inside-avoid">
+                        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b pb-6 border-slate-200">
+                            <div>
+                                <div className="flex items-center gap-3 mb-1">
+                                    <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Strategic Mastery Ecosystem</h1>
+                                    <span className="bg-emerald-50 text-emerald-600 text-[10px] font-black px-2 py-1 rounded-full border border-emerald-100 flex items-center gap-1.5 pulse-live">
+                                        <span className="w-2 h-2 bg-emerald-500 rounded-full"></span> LIVE ECOSYSTEM STATUS
+                                    </span>
+                                </div>
+                                <div className="flex flex-col">
+                                    <p className="text-slate-600 text-sm font-semibold tracking-tight uppercase">FOMCD 2026 Core Alignment & "Finding Health" Curriculum Effectiveness</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Inquiry:</p>
+                                        <p className="text-indigo-600 text-[10px] font-black uppercase tracking-widest">EUN MI PARK, ED.D.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3 print-hide">
+                                <div className="hidden lg:flex flex-col items-end mr-2">
+                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Active Data View</span>
+                                    <span className="text-[10px] font-black text-indigo-700 bg-indigo-100 px-2 py-1 rounded border border-indigo-200 shadow-sm">{activeCohort}</span>
+                                </div>
+                                <button onClick={() => setIsFilterOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all shadow-sm active:scale-95 font-black uppercase tracking-tight"><Icon name="filter" /> Filter Cohort</button>
+                                <button onClick={() => setIsAccreditationOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 shadow-md transition-all font-black uppercase tracking-tight"><Icon name="shield-check" /> Evidence Map</button>
+                            </div>
+                        </header>
+
+                        {/* KPI CARDS - Forced 5 columns in print */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8 print:grid-cols-5 print:gap-3 print:mb-6">
+                            {Object.entries(KPI_DETAILS).map(([title, detail]) => {
+                                const val = title === "Proj. 1st-Pass COMLEX-USA" ? cohortMetrics.comlex : title === "M2 Readiness Exam" ? cohortMetrics.readiness : title === "Clinical EPA Mastery" ? cohortMetrics.epa : title === "FOMCD 2026 Mastery Index" ? cohortMetrics.index : cohortMetrics.cqi;
+                                const stat = title === "Proj. 1st-Pass COMLEX-USA" ? cohortMetrics.comlexStatus : "Optimal";
+                                const isHighlight = title === "CQI Loop Resolution";
+                                return (
+                                    <div key={title} onClick={() => setSelectedDetail({ title, value: val, status: stat, ...detail, highlight: isHighlight })}
+                                        className={`p-4 rounded-xl shadow-sm border transition-all flex flex-col justify-between h-full cursor-pointer group relative ${isHighlight ? 'bg-[#064e3b] border-[#064e3b] scale-[1.02] shadow-lg shadow-emerald-100 print:bg-[#064e3b]' : 'bg-white border-slate-200 hover:border-indigo-300'}`}>
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div className={`p-2 rounded-lg ${isHighlight ? 'bg-emerald-400/20 text-emerald-300' : 'bg-indigo-50 text-indigo-600'}`}><Icon name={detail.icon} /></div>
+                                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${isHighlight ? 'bg-emerald-400/20 text-emerald-300 border border-emerald-400/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>{stat}</span>
+                                        </div>
+                                        <div><h3 className={`text-[9px] font-black uppercase tracking-widest leading-tight mb-1 ${isHighlight ? 'text-emerald-200/70' : 'text-slate-500'}`}>{title}</h3><p className={`text-2xl font-black ${isHighlight ? 'text-white' : 'text-slate-900'}`}>{val}</p></div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* MAIN VISUALS SECTION - Forced 2 columns & reduced height in print */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 print:grid-cols-2 print:gap-4">
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden">
+                                <div className="flex justify-between items-center mb-6 relative z-10"><h3 className="font-black text-slate-800 text-lg uppercase tracking-tight leading-none">Longitudinal Analytics</h3><p className="text-[10px] text-slate-500 font-bold tracking-widest uppercase">WVSOM Outcomes Tracking</p></div>
+                                <div className="h-[420px] print:h-[300px]">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={longitudinalData} margin={{ top: 40, right: 10, left: -20, bottom: 0 }}>
+                                            <defs><linearGradient id="colorOpp" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={COLORS.purple} stopOpacity={0.25}/><stop offset="95%" stopColor={COLORS.purple} stopOpacity={0}/></linearGradient></defs>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                            <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 10, fontStyle: 'bold'}} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 10, fontStyle: 'bold'}} domain={[0, 100]} />
+                                            <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px' }} cursor={{ stroke: '#e2e8f0', strokeWidth: 2 }} />
+                                            <Legend iconType="circle" verticalAlign="bottom" wrapperStyle={{paddingTop: '20px', fontSize: '10px', fontWeight: 'bold'}} />
+                                            <ReferenceLine x="2024" stroke="#f59e0b" strokeWidth={3} strokeDasharray="5 5"><Label value="★ FINDING HEALTH LAUNCH" position="top" fill="#c2410c" fontSize={10} fontWeight="900" offset={12} /></ReferenceLine>
+                                            <Area type="monotone" dataKey="compassion" name="Compassion/Spirit." stroke={COLORS.pink} fillOpacity={0} strokeWidth={3.5} />
+                                            <Area type="monotone" dataKey="oppIntegration" name="Holistic OPP/OMT" stroke={COLORS.purple} fillOpacity={1} fill="url(#colorOpp)" strokeWidth={4} />
+                                            <Area type="monotone" dataKey="sdoh" name="SDOH Index" stroke={COLORS.green} fillOpacity={0} strokeWidth={3.5} />
+                                            <Area type="monotone" dataKey="digitalIntel" name="Digital Intelligence" stroke={COLORS.blue} fillOpacity={0} strokeWidth={3.5} />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative group">
+                                <div className="mb-6">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><Icon name="target" /></div>
+                                        <div>
+                                            <h3 className="font-black text-slate-800 text-lg uppercase tracking-tight leading-none">Institutional Readiness Radar</h3>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Multi-Domain Integration</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end print-hide">
+                                        <div className="flex items-center gap-1.5 text-[9px] font-black text-indigo-600 uppercase bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100 inline-flex pulse-live shadow-sm">
+                                            <Icon name="eye" className="w-3 h-3" /> LIVE: CLICK DOMAIN LABELS FOR STRATEGY
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="h-[380px] flex items-center justify-center print:h-[300px]">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <RadarChart cx="50%" cy="50%" outerRadius="58%" data={competencyRadarData}>
+                                            <PolarGrid stroke="#e2e8f0" />
+                                            <PolarAngleAxis dataKey="subject" tick={(props) => {
+                                                const { payload, x, y, textAnchor } = props;
+                                                const dataPoint = competencyRadarData.find(d => d.subject === payload.value);
+                                                const val = dataPoint ? dataPoint.A : 0;
+                                                const lab = payload.value.split(':');
+                                                
+                                                // VISUAL THREAD COLOR LOGIC
+                                                const isD1 = payload.value.includes('D1');
+                                                let labelColor = COLORS.slate;
+                                                if (isD1 || payload.value.includes('D2') || payload.value.includes('D3')) labelColor = COLORS.purple;
+                                                else if (payload.value.includes('D4')) labelColor = COLORS.cobalt;
+                                                else if (payload.value.includes('D6.10')) labelColor = COLORS.blue;
+                                                else if (payload.value.includes('D6:')) labelColor = COLORS.pink;
+                                                else if (payload.value.includes('D7')) labelColor = COLORS.green;
+
+                                                return (
+                                                    <g className="cursor-pointer hover:opacity-70 transition-all duration-200" onClick={() => setSelectedRadarDomain(payload.value)}>
+                                                        <text x={x} y={y} textAnchor={textAnchor} fill={labelColor} fontSize="8.5" fontWeight="900">
+                                                            <tspan x={x} dy={isD1 ? "-3.8em" : "-0.8em"}>{lab[0]}:</tspan>
+                                                            <tspan x={x} dy="1.2em">{lab[1]?.split(' ').slice(1, 3).join(' ')}</tspan>
+                                                            <tspan x={x} dy="1.2em">{lab[1]?.split(' ').slice(3).join(' ')}</tspan>
+                                                            <tspan x={x} dy="1.2em" fill="#4f46e5">({val}%)</tspan>
+                                                        </text>
+                                                    </g>
+                                                );
+                                            }} />
+                                            <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+                                            <Radar dataKey="A" stroke="#4f46e5" strokeWidth={3} fill="#4f46e5" fillOpacity={0.4} />
+                                        </RadarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* --- PAGE 2 WRAPPER (Forces a Page Break before the Pillar grids) --- */}
+                    <div className="print:break-before-page print:break-inside-avoid">
+                        {/* STRATEGIC PILLARS GRID - Forced 4 columns in print */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6 print:mt-4 print:grid-cols-4 print:gap-4">
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                <h3 className="font-black mb-4 flex items-center gap-2 uppercase tracking-tight text-slate-800"><Icon name="graduation-cap" className="w-5 h-5" style={{color: COLORS.purple}} /> Fundamental Pillar</h3>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase mb-4 tracking-widest underline underline-offset-4 decoration-purple-200">Clinical Core (D1, D2, D3)</p>
+                                <div className="space-y-4">{[{ l: 'D1: Osteopathic Prin.', v: cohortMetrics.radar[0], i: "stethoscope", c: COLORS.purple }, { l: 'D2: Patient Care', v: cohortMetrics.radar[1], i: "user-check", c: COLORS.purple }, { l: 'D3: Medical Knowledge', v: cohortMetrics.radar[2], i: "brain-circuit", c: COLORS.purple }].map(p => (
+                                    <div key={p.l}><div className="flex justify-between text-[9px] mb-1.5 font-black uppercase text-slate-500"><div className="flex items-center gap-2"><Icon name={p.i} className="w-3 h-3" style={{color: p.c}} /><span>{p.l}</span></div><span>{p.v}%</span></div><div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden"><div className="h-full transition-all duration-700" style={{width: `${p.v}%`, backgroundColor: p.c}}></div></div></div>
+                                ))}</div>
+                            </div>
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                <h3 className="font-black mb-4 flex items-center gap-2 uppercase tracking-tight text-slate-800"><Icon name="briefcase" className="w-5 h-5" style={{color: COLORS.pink}} /> Prof. Evolution</h3>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase mb-4 tracking-widest underline underline-offset-4 decoration-fuchsia-200">Identity (D5, D6, D6.10)</p>
+                                <div className="space-y-4">{[{ l: 'D5: Communication', v: cohortMetrics.radar[4], i: "message-square", c: COLORS.pink }, { l: 'D6: Professionalism', v: cohortMetrics.radar[5], i: "heart-handshake", c: COLORS.pink }, { l: 'D6.10: Digital Intelligence', v: cohortMetrics.radar[7], i: "laptop", c: COLORS.blue }].map(p => (
+                                    <div key={p.l}><div className="flex justify-between text-[9px] mb-1.5 font-black uppercase text-slate-500"><div className="flex items-center gap-2"><Icon name={p.i} className="w-3 h-3" style={{color: p.c}} /><span>{p.l}</span></div><span>{p.v}%</span></div><div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden"><div className="h-full transition-all duration-700" style={{width: `${p.v}%`, backgroundColor: p.c}}></div></div></div>
+                                ))}</div>
+                            </div>
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                <h3 className="font-black mb-4 flex items-center gap-2 uppercase tracking-tight text-slate-800"><Icon name="globe" className="w-5 h-5" style={{color: COLORS.green}} /> L & P Env. Pillar</h3>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase mb-4 tracking-widest underline underline-offset-4 decoration-emerald-200">Systems (D4, D7)</p>
+                                <div className="space-y-4">{[{ l: 'D4: Prac-Based Learning & Imp.', v: cohortMetrics.radar[3], i: "book-open", c: COLORS.cobalt }, { l: 'D7: Systems Practice', v: cohortMetrics.radar[6], i: "target", c: COLORS.green }, { l: 'D7 / Mission: Rural Impact', v: Math.round(94 * cohortMetrics.sdohMod), i: "shield-check", c: COLORS.green }].map(p => (
+                                    <div key={p.l}><div className="flex justify-between text-[9px] mb-1.5 font-black uppercase text-slate-500"><div className="flex items-center gap-2"><Icon name={p.i} className="w-3 h-3" style={{color: p.c}} /><span>{p.l}</span></div><span>{p.v}%</span></div><div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden"><div className="h-full transition-all duration-700" style={{width: `${p.v}%`, backgroundColor: p.c}}></div></div></div>
+                                ))}</div>
+                            </div>
+                            
+                            {/* CQI ACTIVE WORKLIST */}
+                            <div className="bg-[#064e3b] p-6 rounded-2xl shadow-xl border border-[#047857] relative overflow-hidden flex flex-col justify-between print:bg-[#064e3b]">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-[#34d399] opacity-10 blur-2xl rounded-full -mr-10 -mt-10 print-hide"></div>
+                                <div><h3 className="font-black text-white mb-4 flex items-center gap-2 uppercase tracking-tight relative z-10"><Icon name="arrow-up-right" className="w-5 h-5 text-[#a3e635]" /> CQI Actions</h3>
+                                    <div className="space-y-4 relative z-10">
+                                        {[
+                                            { d: 'D6.10: Digital Intelligence', t: 'Integrate AI-Scribe into PCM 2', s: 'Active', c: 'text-sky-300', badge: 'bg-sky-500/20 text-sky-200 border-sky-500/30' }, 
+                                            { d: 'D4: Practice-Based Learning', t: 'Automated OSCE Dashboards', s: 'Fall 2026', c: 'text-amber-300', badge: 'bg-amber-500/20 text-amber-200 border-amber-500/30' }, 
+                                            { d: 'D7: Systems-Based Practice', t: 'Rural SDOH Clinic Expansion', s: 'Deployed', c: 'text-emerald-300', badge: 'bg-emerald-500/30 text-emerald-100 border-emerald-400/40' }
+                                        ].map(item => (
+                                            <div key={item.t} className="relative pl-3 border-l border-emerald-800"><div className="flex justify-between items-start mb-1"><span className={`text-[9px] font-black uppercase ${item.c}`}>{item.d}</span><span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-sm border ${item.badge}`}>{item.s}</span></div><p className="text-xs font-bold text-emerald-50 leading-snug">{item.t}</p></div>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="mt-6 pt-4 border-t border-emerald-800/50 flex justify-between items-center relative z-10 text-[10px] font-black text-emerald-300/60 uppercase tracking-widest"><span>42 Resolution Items</span><Icon name="check-circle-2" className="w-4 h-4 text-emerald-400" /></div>
+                            </div>
+                        </div>
+
+                        {/* FOOTER */}
+                        <footer className="mt-8 pt-6 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest print:mt-6">
+                            <div className="flex items-center gap-4">
+                                <span className="flex items-center gap-1.5 text-emerald-600 font-black bg-emerald-50 px-2 py-1 rounded-md border border-emerald-200 print:border-emerald-500">
+                                    <span className="relative flex h-2 w-2 mr-1 print-hide"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span></span>
+                                    LIVE ECOSYSTEM STATUS: API CONNECTED
+                                </span>
+                                <span className="flex items-center gap-1.5"><Icon name="shield-check" className="w-3 h-3" /> COCA STANDARDS ALIGNED</span>
+                            </div>
+                            <div className="text-right font-black text-slate-600 tracking-tighter uppercase underline decoration-indigo-300 underline-offset-4">Inquiry: EUN MI PARK, ED.D.</div>
+                        </footer>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

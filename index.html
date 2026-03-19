@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strategic Mastery Ecosystem | EUN MI PARK, ED.D.</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Dependencies: Order is critical for UMD builds -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        
+        .recharts-text.recharts-polar-angle-axis-tick-value { cursor: pointer; transition: all 0.2s; }
+        .recharts-text.recharts-polar-angle-axis-tick-value:hover { font-weight: 900; filter: brightness(0.8); }
+        .modal-animate { animation: zoomIn 0.2s ease-out; }
+        
+        @keyframes zoomIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* --- BULLETPROOF PORTRAIT PRINT ENGINE --- */
+        @media print {
+            @page {
+                size: landscape; 
+                margin: 0.3in;
+            }
+            body, html {
+                background-color: white !important;
+                color: black !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .print-hide { display: none !important; }
+            
+            .print-page { 
+                display: block !important;
+                width: 100% !important;
+                page-break-after: always !important; 
+                break-after: page !important;
+                padding-bottom: 0 !important;
+                margin-bottom: 0 !important;
+                box-sizing: border-box;
+            }
+            .print-page:last-child {
+                page-break-after: auto !important;
+                break-after: auto !important;
+            }
+            .no-break { page-break-inside: avoid !important; break-inside: avoid !important; }
+        }
+
+        .pulse-live { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.02); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
+        const { 
+            LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+            RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, 
+            ReferenceLine, Label, Legend 
+        } = Recharts;
+
+        const Icon = ({ name, className = "w-4 h-4", style = {} }) => {
+            const icons = {
+                award: <><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></>,
+                activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
+                stethoscope: <path d="M4.8 2.3A.3.3 0 1 0 5 2h-.2ZM3 2h12M14 2v4a2 2 0 1 1-4 0V2m4 13a2 2 0 1 0-4 0M5 12V6a2 2 0 1 0-4 0v8a4.4 4.4 0 0 0 5.2 4.3" />,
+                target: <><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></>,
+                "check-circle-2": <><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" /><path d="m9 12 2 2 4-4" /></>,
+                filter: <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />,
+                "shield-check": <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="m9 12 2 2 4-4" /></>,
+                "trending-up": <><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></>,
+                "graduation-cap": <><path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" /></>,
+                briefcase: <><rect width="20" height="14" x="2" y="7" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></>,
+                globe: <><circle cx="12" cy="12" r="10" /><path d="M2 12h20" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></>,
+                laptop: <><rect width="18" height="12" x="3" y="4" rx="2" ry="2" /><line x1="2" y1="20" x2="22" y2="20" /></>,
+                "message-square": <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
+                "heart-handshake": <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />,
+                "user-check": <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><polyline points="17 11 19 13 23 9" /></>,
+                "brain-circuit": <><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .52 5.586 3 3 0 1 0 5.83 1.519A4 4 0 0 0 12 15" /><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.52 5.586 3 3 0 1 1-5.83 1.519A4 4 0 0 1 12 15" /><path d="M9 13a4.5 4.5 0 0 0 3-4" /><path d="M12 13V5" /></>,
+                "arrow-up-right": <><line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" /></>,
+                x: <><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></>,
+                "book-open": <><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></>
+            };
+            return (
+                <svg className={className} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    {icons[name] || <circle cx="12" cy="12" r="10" />}
+                </svg>
+            );
+        };
+
+        const RAW_LONG_DATA = [
+            { year: '2016', d1_3: 62, d2_1: 70, d6_2: 78, d610: 15, d7_2: 38 },
+            { year: '2017', d1_3: 63, d2_1: 71, d6_2: 79, d610: 18, d7_2: 40 },
+            { year: '2018', d1_3: 65, d2_1: 72, d6_2: 80, d610: 20, d7_2: 42 },
+            { year: '2019', d1_3: 66, d2_1: 73, d6_2: 81, d610: 22, d7_2: 44 },
+            { year: '2020', d1_3: 68, d2_1: 75, d6_2: 83, d610: 42, d7_2: 48 }, 
+            { year: '2021', d1_3: 70, d2_1: 78, d6_2: 82, d610: 48, d7_2: 52 },
+            { year: '2022', d1_3: 72, d2_1: 80, d6_2: 84, d610: 52, d7_2: 55 },
+            { year: '2023', d1_3: 74, d2_1: 80, d6_2: 85, d610: 58, d7_2: 60 },
+            { year: '2024', d1_3: 87, d2_1: 81, d6_2: 85, d610: 70, d7_2: 74 }, 
+            { year: '2025', d1_3: 89, d2_1: 82, d6_2: 87, d610: 75, d7_2: 78 },
+            { year: '2026', d1_3: 92, d2_1: 84, d6_2: 89, d610: 78, d7_2: 82 }, 
+        ];
+
+        const COLORS = { 
+            purple: "#8a2be2",      
+            lavenderPop: "#d8b4fe", 
+            pink: "#f472b6",        
+            vibrantGreen: "#10b981",
+            turquoise: "#22d3ee",   
+            cobalt: "#2563eb",      
+            evergreen: "#064e3b",   
+            slate: "#475569"
+        };
+
+        const MASTER_LABELS = {
+            D1: "D1: OPP & OMT",
+            D2: "D2: Patient Care & Procedural Skills",
+            D3: "D3: Application of Knowledge for OMP",
+            D4: "D4: PBLI in OMP",
+            D5: "D5: Interpersonal & Communication Skills in OMP",
+            D6: "D6: Professionalism & Compassion in OMP",
+            D7: "D7: SBP in OM",
+            E1_3: "D1.3: Integration of OPP/OMT",
+            E2_1: "D2.1: Patient-Centered",
+            E6_2: "D6.2: Compassion and Humanistic Behavior",
+            E6_10: "D6.10: Digital Intelligence",
+            E7_2: "D7.2: SDOH Impact"
+        };
+
+        const App = () => {
+            const [activeCohort, setActiveCohort] = useState("Class of 2027 (All)");
+            const [selectedRadarDomain, setSelectedRadarDomain] = useState(null);
+            const [selectedDetail, setSelectedDetail] = useState(null);
+            const [isFilterOpen, setIsFilterOpen] = useState(false);
+            const [isEvidenceMapOpen, setIsEvidenceMapOpen] = useState(false);
+            const [chartReady, setChartReady] = useState(false);
+
+            useEffect(() => {
+                const timer = setTimeout(() => setChartReady(true), 100);
+                return () => clearTimeout(timer);
+            }, []);
+
+            const baseMetrics = useMemo(() => {
+                switch (activeCohort) {
+                    case "Class of 2026": 
+                        return { comlexProj: 93.6, cqiVerified: 38, cqiTotal: 42, cqiVelocity: "+18%", domains: [89, 88, 90, 84, 89, 92, 85], mods: { d1_3: 1.0, d2_1: 1.0, d6_2: 1.0, d610: 1.0, d7_2: 1.0 } };
+                    case "Rural Health Track": 
+                        return { comlexProj: 91.2, cqiVerified: 40, cqiTotal: 42, cqiVelocity: "+22%", domains: [87, 89, 87, 86, 90, 93, 89], mods: { d1_3: 0.98, d2_1: 1.05, d6_2: 1.02, d610: 0.90, d7_2: 1.15 } };
+                    case "ASPIRE Cohort": 
+                        return { comlexProj: 89.5, cqiVerified: 32, cqiTotal: 42, cqiVelocity: "+12%", domains: [85, 85, 84, 88, 87, 88, 85], mods: { d1_3: 0.95, d2_1: 0.98, d6_2: 0.98, d610: 1.12, d7_2: 0.95 } };
+                    default: 
+                        return { comlexProj: 92.4, cqiVerified: 35, cqiTotal: 42, cqiVelocity: "+15%", domains: [88, 86, 88, 84, 88, 90, 85], mods: { d1_3: 1.0, d2_1: 1.0, d6_2: 1.0, d610: 1.0, d7_2: 1.0 } };
+                }
+            }, [activeCohort]);
+
+            const longitudinalData = useMemo(() => RAW_LONG_DATA.map(d => ({
+                ...d,
+                d1_3: Math.min(100, Math.round(d.d1_3 * baseMetrics.mods.d1_3)),
+                d2_1: Math.min(100, Math.round(d.d2_1 * baseMetrics.mods.d2_1)),
+                d6_2: Math.min(100, Math.round(d.d6_2 * baseMetrics.mods.d6_2)),
+                d610: Math.min(100, Math.round(d.d610 * baseMetrics.mods.d610)),
+                d7_2: Math.min(100, Math.round(d.d7_2 * baseMetrics.mods.d7_2))
+            })), [baseMetrics]);
+
+            const cohortMetrics = useMemo(() => {
+                const last = longitudinalData[longitudinalData.length - 1];
+                const readiness = ((baseMetrics.domains[0] + baseMetrics.domains[2]) / 2).toFixed(1);
+                const epa = ((baseMetrics.domains[1] + baseMetrics.domains[4] + baseMetrics.domains[5] + baseMetrics.domains[6]) / 4).toFixed(1);
+                const index = (baseMetrics.domains.reduce((a, b) => a + b, 0) / 7).toFixed(1);
+                const comlex = baseMetrics.comlexProj.toFixed(1); 
+                const getStatus = (val) => parseFloat(val) >= 85 ? "Optimal" : "Target";
+
+                return {
+                    ...baseMetrics,
+                    elements: [last.d1_3, last.d2_1, last.d6_2, last.d610, last.d7_2],
+                    readiness: readiness + "%",
+                    readinessStatus: getStatus(readiness),
+                    epa: epa + "%",
+                    epaStatus: getStatus(epa),
+                    index: index + "%",
+                    indexStatus: getStatus(index),
+                    comlex: comlex + "%",
+                    comlexStatus: baseMetrics.comlexProj >= 95 ? "Peak" : "High",
+                    cqiFraction: `${baseMetrics.cqiVerified} / ${baseMetrics.cqiTotal}`,
+                    cqiRate: ((baseMetrics.cqiVerified / baseMetrics.cqiTotal) * 100).toFixed(1) + "%"
+                };
+            }, [baseMetrics, longitudinalData]);
+
+            const dynamicKpiDetails = useMemo(() => ({
+                "PROJ. 1ST-PASS COMLEX-USA": { narrative: "Predictive model based on COMSAE Phase 1 benchmarks + institutional regression lift.", subMetrics: [{ name: "COMSAE Phase 1 Base", value: (parseFloat(cohortMetrics.comlex) - 4.1).toFixed(1) + "%" }, { name: "Historical Lift", value: "+4.1%" }], icon: "award" },
+                "M2 READINESS EXAM (D1, D3)": { narrative: "Composite foundational science and OMT competency gatekeeper score.", subMetrics: [{ name: "D1: OPP/OMT Mastery", value: cohortMetrics.domains[0] + ".0%" }, { name: "D3: Medical Knowledge", value: cohortMetrics.domains[2] + ".0%" }], icon: "activity" },
+                "CLINICAL EPA MASTERY (D2, D5, D6, D7)": { narrative: "Observation mean across interpersonal, professional, and procedural domains.", subMetrics: [{ name: "Skills (D2/D5) Mean", value: ((cohortMetrics.domains[1] + cohortMetrics.domains[4]) / 2).toFixed(1) + "%" }, { name: "Prof/Sys (D6/D7) Mean", value: ((cohortMetrics.domains[5] + cohortMetrics.domains[6]) / 2).toFixed(1) + "%" }], icon: "stethoscope" },
+                "FOMCD 2026 MASTERY INDEX": { narrative: "Aggregate mean mastery level across all 7 core macro domains.", subMetrics: [{ name: "Domain Points", value: cohortMetrics.domains.reduce((a,b)=>a+b,0) + " / 700" }, { name: "Mean Index", value: cohortMetrics.index }], icon: "target" },
+                "CQI LOOP RESOLUTION": { narrative: "Verified resolution rate of identified curricular and performance gaps.", subMetrics: [{ name: "Verified Actions", value: cohortMetrics.cqiVerified }, { name: "Resolution Velocity", value: cohortMetrics.cqiVelocity }], icon: "check-circle-2" }
+            }), [cohortMetrics]);
+
+            const dynamicInsights = useMemo(() => {
+                const last = longitudinalData[longitudinalData.length - 1];
+                return { d1_3: last.d1_3, d610_G: last.d610 - longitudinalData[0].d610, d7_2_I: last.d7_2 - longitudinalData[7].d7_2 };
+            }, [longitudinalData]);
+
+            const renderRadarTick = (props, dataset) => {
+                const { payload, x, y, textAnchor } = props;
+                const val = dataset[props.index]?.A || 0;
+                let labelColor = COLORS.slate;
+                
+                if (payload.value.startsWith('D1') || payload.value.startsWith('D3')) labelColor = COLORS.purple;
+                else if (payload.value.startsWith('D2')) labelColor = COLORS.lavenderPop;
+                else if (payload.value.startsWith('D4')) labelColor = COLORS.cobalt;
+                else if (payload.value.startsWith('D5') || payload.value.startsWith('D6:') || payload.value.startsWith('D6.2')) labelColor = COLORS.pink;
+                else if (payload.value.startsWith('D6.10')) labelColor = COLORS.turquoise;
+                else if (payload.value.startsWith('D7')) labelColor = COLORS.vibrantGreen;
+
+                let lines = [];
+                if (payload.value.includes('D1:')) lines = ["D1: OPP", "& OMT"];
+                else if (payload.value.includes('D2:')) lines = ["D2: Patient Care &", "Procedural Skills"];
+                else if (payload.value.includes('D3:')) lines = ["D3: Application", "of Knowledge", "for OMP"];
+                else if (payload.value.includes('D4:')) lines = ["D4: PBLI", "in OMP"];
+                else if (payload.value.includes('D5:')) lines = ["D5: Interpersonal &", "Communication", "Skills in OMP"];
+                else if (payload.value.includes('D6:')) lines = ["D6: Professionalism", "& Compassion", "in OMP"];
+                else if (payload.value.includes('D7:')) lines = ["D7: SBP", "in OM"];
+                else if (payload.value.includes('D1.3:')) lines = ["D1.3: Integration", "of OPP/OMT"];
+                else if (payload.value.includes('D2.1:')) lines = ["D2.1: Patient-", "Centered"];
+                else if (payload.value.includes('D6.2:')) lines = ["D6.2: Compassion", "& Humanistic", "Behavior"];
+                else if (payload.value.includes('D6.10:')) lines = ["D6.10: Digital", "Intelligence"];
+                else if (payload.value.includes('D7.2:')) lines = ["D7.2: SDOH Impact"];
+                else lines = [payload.value];
+
+                const isTop = payload.value.includes('D1');
+                return (
+                    <g>
+                        {/* Font size reduced slightly to 10px to ensure perfect rendering without overlaps */}
+                        <text x={x} y={y} textAnchor={textAnchor} fill={labelColor} fontSize="10" fontWeight="900" className="font-black">
+                            {lines.map((line, idx) => (
+                                <tspan key={idx} x={x} dy={idx === 0 ? (isTop ? "-4.5em" : "-1em") : "1.2em"}>{line}</tspan>
+                            ))}
+                            <tspan x={x} dy="1.2em" opacity="0.8" fontSize="10">({val}%)</tspan>
+                        </text>
+                    </g>
+                );
+            };
+
+            const getPillarColor = (label) => {
+                if (label.includes("D6.10")) return COLORS.turquoise;
+                if (label.includes("D7.2") || label.includes("D7:")) return COLORS.vibrantGreen;
+                if (label.includes("D4")) return COLORS.cobalt;
+                if (label.includes("D2.1") || label.includes("D2:")) return COLORS.lavenderPop;
+                if (label.includes("D5") || label.includes("D6:") || label.includes("D6.2")) return COLORS.pink;
+                return COLORS.purple;
+            };
+
+            return (
+                <div className="min-h-screen bg-slate-50 font-sans text-slate-900 p-6 md:p-10 print:p-0 print:bg-white relative overflow-x-hidden font-black">
+
+                    {/* --- MODALS --- */}
+                    {isFilterOpen && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md print-hide">
+                            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200">
+                                <div className="p-6 bg-slate-50 border-b flex justify-between items-center"><h3 className="uppercase tracking-tight font-black text-slate-900 flex items-center gap-2"><Icon name="filter" className="w-5 h-5 text-indigo-600" /> Select Cohort</h3><button onClick={() => setIsFilterOpen(false)}><Icon name="x" className="w-6 h-6 text-slate-400" /></button></div>
+                                <div className="p-8 space-y-3">
+                                    {["Class of 2026", "Class of 2027 (All)", "Rural Health Track", "ASPIRE Cohort"].map(c => (
+                                        <button key={c} onClick={() => { setActiveCohort(c); setIsFilterOpen(false); }} className={`flex justify-between w-full p-5 rounded-2xl border-2 transition-all ${activeCohort === c ? 'border-indigo-600 bg-indigo-50 font-black text-indigo-900' : 'border-slate-100 font-bold text-slate-500'}`}><span>{c}</span>{activeCohort === c && <Icon name="check-circle-2" className="w-5 h-5 text-indigo-600" />}</button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {isEvidenceMapOpen && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md print-hide">
+                            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden text-left">
+                                <div className="p-6 bg-slate-900 text-white flex justify-between items-center">
+                                    <div className="flex items-center gap-3"><Icon name="shield-check" className="w-6 h-6 text-indigo-300" /><h3 className="font-black uppercase tracking-tight text-lg">COCA Evidence Map</h3></div>
+                                    <button onClick={() => setIsEvidenceMapOpen(false)}><Icon name="x" className="w-6 h-6 text-slate-400 hover:text-white" /></button>
+                                </div>
+                                <div className="p-8 space-y-4">
+                                    <p className="text-sm font-bold text-slate-500 mb-4">Alignment Matrix for FOMCD 2026</p>
+                                    {[{s:"6.4",t:"Core Competencies",e:"Domain tracking via SIMIQ/ExamSoft."}, {s:"7.1",t:"Assessment",e:"Board readiness via COMSAE benchmarks."}, {s:"12.1",t:"Student Well-Being",e:"Resilience & Self-Care within the Professional Evolution Pillar."}].map((item, i) => (
+                                        <div key={i} className="bg-slate-50 p-4 rounded-xl border border-slate-200"><span className="text-xs font-black text-indigo-600 mb-1 block">Element {item.s}</span><p className="text-sm font-bold">{item.t}: {item.e}</p></div>
+                                    ))}
+                                    <div className="text-center mt-6 text-xs font-bold text-slate-400 italic pt-4 border-t border-slate-200">+ 24 Additional Elements Mapped Internally</div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {selectedDetail && (
+                        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm print-hide">
+                            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden text-left border border-white/20">
+                                <div className={`p-6 flex justify-between items-start ${selectedDetail.highlight ? 'bg-[#064e3b]' : 'bg-slate-50 border-b'}`}>
+                                    <div className="flex gap-4"><div className={`p-3 rounded-2xl ${selectedDetail.highlight ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white shadow-sm text-indigo-600 border'}`}><Icon name={selectedDetail.icon} className="w-6 h-6" /></div><div><h4 className={`text-xs font-black uppercase tracking-widest ${selectedDetail.highlight ? 'text-emerald-200/60' : 'text-slate-400'}`}>Strategic Performance Detail</h4><h3 className={`text-xl font-black ${selectedDetail.highlight ? 'text-white' : 'text-slate-900'}`}>{selectedDetail.title}</h3></div></div>
+                                    <button onClick={() => setSelectedDetail(null)} className="p-2 transition-colors hover:bg-slate-100 rounded-full"><Icon name="x" className={`w-5 h-5 ${selectedDetail.highlight ? 'text-emerald-100 hover:text-white' : 'text-slate-400'}`} /></button>
+                                </div>
+                                <div className="p-8">
+                                    <div className="grid grid-cols-2 gap-4 mb-6 text-center">
+                                        <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 font-black"><span className="text-[10px] text-slate-400 uppercase tracking-widest block mb-1">Result</span><span className="text-4xl text-slate-900">{selectedDetail.value}</span></div>
+                                        <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 font-black"><span className="text-[10px] text-slate-400 uppercase tracking-widest block mb-1">Target Status</span><span className={`text-sm font-black px-3 py-1 rounded-full mt-1 inline-block bg-emerald-50 text-emerald-600 border border-emerald-100`}>{selectedDetail.status}</span></div>
+                                    </div>
+                                    {selectedDetail.subMetrics && (
+                                        <div className="mb-6 font-black"><h5 className="text-[10px] text-slate-800 uppercase mb-4 flex items-center gap-2"><Icon name="trending-up" className="w-3 h-3 text-indigo-500" /> Component Breakdown (Source)</h5>
+                                            <div className="space-y-2">{selectedDetail.subMetrics.map((m, i) => (<div key={i} className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-100 shadow-sm font-black"><span className="text-xs text-slate-600">{m.name}</span><span className="text-xs text-slate-900">{m.value}</span></div>))}</div>
+                                        </div>
+                                    )}
+                                    <p className="text-sm text-slate-500 font-bold italic bg-indigo-50/50 p-5 rounded-xl border border-indigo-100/50 text-center">"{selectedDetail.narrative}"</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ================================================================= */}
+                    {/* PAGE 1: KPI & LINE CHART */}
+                    {/* ================================================================= */}
+                    <div className="print-page pb-4 print:pt-4">
+                        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 border-b pb-6 text-left">
+                            <div>
+                                <div className="flex items-center gap-3 mb-1">
+                                    <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">Strategic Mastery Ecosystem</h1>
+                                    <span className="bg-emerald-50 text-emerald-600 text-[11px] font-black px-3 py-1 rounded-full border border-emerald-100 flex items-center gap-1.5 pulse-live print-hide"><span className="w-2 h-2 bg-emerald-500 rounded-full"></span> LIVE STATUS</span>
+                                </div>
+                                <p className="text-slate-600 uppercase font-black text-lg tracking-tight">NBOME FOMCD 2026 Core Alignment & Curriculum Effectiveness</p>
+                                <p className="text-indigo-600 text-[12px] uppercase mt-1 tracking-widest font-black">Inquiry: EUN MI PARK, ED.D.</p>
+                            </div>
+                            <div className="flex items-center gap-3 print-hide">
+                                <div className="hidden lg:flex flex-col items-center mr-1 text-center font-black"><span className="text-[9px] text-slate-400 uppercase tracking-widest mb-1">Active Data View</span><div className="bg-indigo-50 text-indigo-700 border border-indigo-200 px-4 py-2 rounded-md text-[13px] whitespace-nowrap">{activeCohort}</div></div>
+                                <button onClick={() => setIsFilterOpen(true)} className="flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 rounded-xl text-sm font-black text-slate-700 hover:bg-slate-50 shadow-sm active:scale-95 uppercase tracking-widest font-black whitespace-nowrap"><Icon name="filter" className="w-4 h-4" /> Filter Cohort</button>
+                                <button onClick={() => setIsEvidenceMapOpen(true)} className="flex items-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-xl text-sm font-black hover:bg-slate-800 shadow-lg uppercase tracking-widest whitespace-nowrap"><Icon name="shield-check" className="w-4 h-4" /> COCA Evidence Map</button>
+                            </div>
+                        </header>
+
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-5 mb-8 print:grid-cols-5">
+                            {[
+                                { id: "PROJ. 1ST-PASS COMLEX-USA", title: "PROJ. 1ST-PASS COMLEX-USA", val: cohortMetrics.comlex, stat: cohortMetrics.comlexStatus, icon: "award", highlight: false },
+                                { id: "M2 READINESS EXAM (D1, D3)", title: "M2 READINESS EXAM (D1, D3)", val: cohortMetrics.readiness, stat: cohortMetrics.readinessStatus, icon: "activity", highlight: false },
+                                { id: "CLINICAL EPA MASTERY (D2, D5, D6, D7)", title: "CLINICAL EPA MASTERY (D2, D5, D6, D7)", val: cohortMetrics.epa, stat: cohortMetrics.epaStatus, icon: "stethoscope", highlight: false },
+                                { id: "FOMCD 2026 MASTERY INDEX", title: "FOMCD 2026 MASTERY INDEX", val: cohortMetrics.index, stat: cohortMetrics.indexStatus, icon: "target", highlight: false },
+                                { id: "CQI LOOP RESOLUTION", title: "CQI LOOP RESOLUTION", val: cohortMetrics.cqiFraction, stat: cohortMetrics.cqiRate, icon: "check-circle-2", highlight: true }
+                            ].map(k => (
+                                <div key={k.id} onClick={() => setSelectedDetail({ title: k.title, value: k.val, status: k.stat, ...dynamicKpiDetails[k.id], highlight: k.highlight })} className={`border p-6 rounded-2xl shadow-sm cursor-pointer transition-all flex flex-col justify-between ${k.highlight ? 'bg-[#064e3b] border-[#064e3b] scale-[1.02] shadow-lg shadow-emerald-100 hover:border-emerald-400 print:bg-[#064e3b]' : 'bg-white border-slate-200 hover:border-indigo-300'}`}>
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className={`p-3 rounded-xl ${k.highlight ? 'bg-emerald-500/30 text-emerald-300' : 'bg-indigo-50 text-indigo-600'}`}><Icon name={k.icon} className="w-6 h-6" /></div>
+                                        <span className={`text-[11px] font-black px-2 py-1 rounded-full border ${k.highlight ? 'bg-emerald-500/30 text-emerald-100' : 'bg-emerald-50 text-emerald-700'} uppercase`}>{k.stat}</span>
+                                    </div>
+                                    <div className="text-left font-black"><h3 className={`text-[11px] uppercase mb-1 ${k.highlight ? 'text-emerald-200/70' : 'text-slate-500'}`}>{k.title}</h3><p className={`text-4xl font-black ${k.highlight ? 'text-white' : 'text-slate-900'}`}>{k.val}</p></div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="bg-white p-8 border rounded-3xl shadow-sm mb-10 flex flex-col items-center font-black">
+                            <div className="w-full text-left mb-4">
+                                <h3 className="text-slate-800 text-2xl uppercase tracking-tight font-black">Longitudinal Analytics (AY16-AY26): Five Core Elements for FOMCD 2026</h3>
+                                <p className="text-[11px] text-indigo-600 font-black uppercase tracking-widest mt-2 inline-block">Methodology: Retroactive Tagging</p>
+                            </div>
+                            
+                            {/* Explicit Fixed Height to bypass Print Layout Collapse */}
+                            <div className="w-full bg-slate-900 rounded-3xl p-8 shadow-inner border border-slate-800 font-black mt-2" style={{ height: '420px' }}>
+                                {chartReady && (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={longitudinalData} margin={{ top: 30, right: 30, left: -10, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
+                                        <XAxis dataKey="year" axisLine={{ stroke: '#475569', strokeWidth: 2 }} tickLine={false} tick={{fill: '#94a3b8', fontSize: 14, fontWeight: '900'}} />
+                                        <YAxis domain={[0, 100]} axisLine={{ stroke: '#475569', strokeWidth: 2 }} tickLine={false} tick={{fill: '#94a3b8', fontSize: 14, fontWeight: '900'}} />
+                                        <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '16px', color: '#fff', fontWeight: '900' }} />
+                                        {/* Reduced Legend font size and added margin right for clean single line */}
+                                        <Legend iconType="rect" verticalAlign="bottom" height={40} wrapperStyle={{ paddingTop: '20px', fontWeight: '900', fontSize: '11px' }} formatter={(v) => <span className="text-slate-300 ml-1 mr-3 uppercase tracking-wider">{v}</span>} />
+                                        <ReferenceLine x="2024" stroke="#fcd34d" strokeWidth={3} strokeDasharray="8 8">
+                                            <Label value='★ FOUNDING HEALTH CURRICULUM LAUNCH' position="top" fill="#fcd34d" fontSize={14} fontWeight="900" offset={12} />
+                                        </ReferenceLine>
+                                        <Line type="monotone" dataKey="d1_3" name="D1.3: Integration" stroke={COLORS.purple} strokeWidth={5} dot={false} isAnimationActive={false} />
+                                        <Line type="monotone" dataKey="d2_1" name="D2.1: Patient-Centered" stroke={COLORS.lavenderPop} strokeWidth={4} dot={false} isAnimationActive={false} />
+                                        <Line type="monotone" dataKey="d6_2" name="D6.2: Compassion" stroke={COLORS.pink} strokeWidth={4} dot={false} isAnimationActive={false} />
+                                        <Line type="monotone" dataKey="d610" name="D6.10: Digital" stroke={COLORS.turquoise} strokeWidth={4} dot={false} isAnimationActive={false} />
+                                        <Line type="monotone" dataKey="d7_2" name="D7.2: SDOH" stroke={COLORS.vibrantGreen} strokeWidth={4} dot={false} isAnimationActive={false} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-3 w-full gap-4 mt-6 p-5 bg-slate-50 rounded-2xl border border-slate-200 font-black">
+                                <div className="text-center border-r border-slate-200 px-2">
+                                    <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1 font-black">Domain Lead</p>
+                                    <p className="text-base text-purple-600 font-black whitespace-nowrap">D1.3: Integration <span className="text-slate-800">({dynamicInsights.d1_3}%)</span></p>
+                                </div>
+                                <div className="text-center border-r border-slate-200 px-2">
+                                    <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1 font-black">10Y Max Growth</p>
+                                    <p className="text-base text-cyan-500 font-black whitespace-nowrap">D6.10: Digital <span className="text-slate-800">(+{dynamicInsights.d610_G}%)</span></p>
+                                </div>
+                                <div className="text-center px-2">
+                                    <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1 font-black">Intervention Impact</p>
+                                    <p className="text-base text-emerald-600 font-black whitespace-nowrap">D7.2: SDOH Impact <span className="text-slate-800">(+{dynamicInsights.d7_2_I}%)</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ================================================================= */}
+                    {/* PAGE 2: RADARS (MASSIVE FULL PAGE WIDTH) */}
+                    {/* ================================================================= */}
+                    <div className="print-page flex flex-col items-center print:pt-6">
+                        <div className="w-full text-center mb-6">
+                            <h2 className="text-3xl font-black uppercase text-slate-800">Ecosystem Mastery Breakdown</h2>
+                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full mb-12 print:grid-cols-2">
+                            
+                            {/* Explicit Fixed Height to bypass Print Layout Collapse */}
+                            <div className="bg-white p-8 border rounded-[40px] shadow-sm text-left flex flex-col no-break">
+                                <h3 className="text-slate-800 text-2xl uppercase mb-1 font-black">Macro: Core Domains</h3>
+                                <p className="text-[13px] text-slate-400 uppercase font-black mb-4">Validation: ExamSoft • SIMIQ • Preceptor</p>
+                                <div className="w-full" style={{ height: '480px' }}>
+                                    {/* GUARANTEED HUGE RADAR CHART: outerRadius="65%" with wide margin to protect labels */}
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <RadarChart cx="50%" cy="50%" outerRadius="65%" margin={{ top: 30, right: 60, bottom: 30, left: 60 }} data={[{subject:MASTER_LABELS.D1,A:cohortMetrics.domains[0]},{subject:MASTER_LABELS.D2,A:cohortMetrics.domains[1]},{subject:MASTER_LABELS.D3,A:cohortMetrics.domains[2]},{subject:MASTER_LABELS.D4,A:cohortMetrics.domains[3]},{subject:MASTER_LABELS.D5,A:cohortMetrics.domains[4]},{subject:MASTER_LABELS.D6,A:cohortMetrics.domains[5]},{subject:MASTER_LABELS.D7,A:cohortMetrics.domains[6]}]}>
+                                            <PolarGrid stroke="#e2e8f0" strokeWidth={2} />
+                                            <PolarAngleAxis dataKey="subject" tick={(p)=>renderRadarTick(p, [{A:cohortMetrics.domains[0]},{A:cohortMetrics.domains[1]},{A:cohortMetrics.domains[2]},{A:cohortMetrics.domains[3]},{A:cohortMetrics.domains[4]},{A:cohortMetrics.domains[5]},{A:cohortMetrics.domains[6]}])} />
+                                            <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+                                            <Radar dataKey="A" stroke={COLORS.purple} fill={COLORS.purple} fillOpacity={0.4} strokeWidth={4} isAnimationActive={false} />
+                                        </RadarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
+                            {/* Explicit Fixed Height to bypass Print Layout Collapse */}
+                            <div className="bg-white p-8 border rounded-[40px] shadow-sm text-left flex flex-col no-break">
+                                <h3 className="text-slate-800 text-2xl uppercase mb-1 font-black">Micro: Target Elements</h3>
+                                <p className="text-[13px] text-slate-400 uppercase font-black mb-4">Critical Modification Items</p>
+                                <div className="w-full" style={{ height: '480px' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <RadarChart cx="50%" cy="50%" outerRadius="65%" margin={{ top: 30, right: 60, bottom: 30, left: 60 }} data={[{subject:MASTER_LABELS.E1_3,A:cohortMetrics.elements[0]},{subject:MASTER_LABELS.E2_1,A:cohortMetrics.elements[1]},{subject:MASTER_LABELS.E6_2,A:cohortMetrics.elements[2]},{subject:MASTER_LABELS.E6_10,A:cohortMetrics.elements[3]},{subject:MASTER_LABELS.E7_2,A:cohortMetrics.elements[4]}]}>
+                                            <PolarGrid stroke="#e2e8f0" strokeWidth={2} />
+                                            <PolarAngleAxis dataKey="subject" tick={(p)=>renderRadarTick(p, [{A:cohortMetrics.elements[0]},{A:cohortMetrics.elements[1]},{A:cohortMetrics.elements[2]},{A:cohortMetrics.elements[3]},{A:cohortMetrics.elements[4]}])} />
+                                            <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+                                            <Radar dataKey="A" stroke={COLORS.turquoise} fill={COLORS.turquoise} fillOpacity={0.4} strokeWidth={4} isAnimationActive={false} />
+                                        </RadarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mb-4 w-full max-w-xl bg-slate-900 text-white px-10 py-4 rounded-full flex justify-between items-center shadow-lg border border-indigo-500/30 mx-auto no-break">
+                            <div className="flex items-center gap-4"><Icon name="target" className="w-6 h-6 text-indigo-400" /><span className="text-[13px] text-slate-300 uppercase tracking-widest font-black">FOMCD 2026 MASTERY INDEX (Mean)</span></div>
+                            <div className="flex items-center gap-1 font-black text-4xl tracking-tighter"><span>{cohortMetrics.index}</span></div>
+                        </div>
+                    </div>
+
+                    {/* ================================================================= */}
+                    {/* PAGE 3: PILLARS & CQI (TIGHT PRINT SPACING) */}
+                    {/* ================================================================= */}
+                    <div className="print-page flex flex-col print:pt-4">
+                        <div className="mb-6 print:mb-4 pt-2"><h3 className="text-2xl font-black uppercase tracking-tight text-slate-900 print:text-3xl">Pillar Execution Framework</h3><p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-1">Operationalizing FOMCD 2026 Strategy</p></div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 print:gap-4 w-full text-left font-black no-break">
+                            
+                            <div className="bg-white p-8 print:p-6 border rounded-3xl shadow-sm h-full flex flex-col no-break">
+                                <h3 className="font-black uppercase text-[1.1rem] xl:text-xl mb-6 print:mb-4 flex items-center gap-3 text-purple-600 tracking-tight whitespace-nowrap"><Icon name="graduation-cap" className="w-7 h-7 shrink-0" /> <span>Fundamental Pillar <span className="text-xs xl:text-sm opacity-70 tracking-normal">(D1, D2, D3)</span></span></h3>
+                                <div className="space-y-8 print:space-y-4">
+                                    {[
+                                    {l: MASTER_LABELS.D1, v: cohortMetrics.domains[0], i: "stethoscope", c: getPillarColor(MASTER_LABELS.D1)}, 
+                                    {l: MASTER_LABELS.E1_3, v: cohortMetrics.elements[0], i: "heart-handshake", c: getPillarColor(MASTER_LABELS.E1_3)}, 
+                                    {l: MASTER_LABELS.E2_1, v: cohortMetrics.elements[1], i: "user-check", c: getPillarColor(MASTER_LABELS.E2_1)},
+                                    {l: MASTER_LABELS.D3, v: cohortMetrics.domains[2], i: "brain-circuit", c: getPillarColor(MASTER_LABELS.D3)}
+                                    ].map((p, idx) => (
+                                    <div key={idx}><div className="flex justify-between items-start text-xs font-black uppercase text-slate-500 mb-2 font-black"><div className="flex items-center gap-2"><Icon name={p.i} className="w-5 h-5" style={{color: p.c}} /><span>{p.l}</span></div><span>{p.v}%</span></div><div className="bg-slate-100 h-3.5 rounded-full overflow-hidden"><div className="h-full transition-all duration-700" style={{width:`${p.v}%`, backgroundColor: p.c}}></div></div></div>
+                                    ))}
+                                </div>
+                            </div>
+                            
+                            <div className="bg-white p-8 print:p-6 border rounded-3xl shadow-sm h-full flex flex-col font-black no-break">
+                                <h3 className="font-black uppercase text-[1.1rem] xl:text-xl mb-6 print:mb-4 flex items-center gap-3 text-fuchsia-600 tracking-tight whitespace-nowrap"><Icon name="briefcase" className="w-7 h-7 shrink-0" /> <span>Professional Evolution Pillar <span className="text-xs xl:text-sm opacity-70 tracking-normal">(D5, D6)</span></span></h3>
+                                <div className="space-y-8 print:space-y-4">
+                                    {[
+                                    {l: MASTER_LABELS.D5, v: cohortMetrics.domains[4], i: "message-square", c: getPillarColor(MASTER_LABELS.D5)}, 
+                                    {l: MASTER_LABELS.E6_2, v: cohortMetrics.elements[2], i: "heart-handshake", c: getPillarColor(MASTER_LABELS.E6_2)}, 
+                                    {l: MASTER_LABELS.E6_10, v: cohortMetrics.elements[3], i: "laptop", c: getPillarColor(MASTER_LABELS.E6_10)}
+                                    ].map((p, idx) => (
+                                    <div key={idx}><div className="flex justify-between items-start text-xs font-black uppercase text-slate-500 mb-2 font-black"><div className="flex items-center gap-2"><Icon name={p.i} className="w-5 h-5" style={{color: p.c}} /><span>{p.l}</span></div><span>{p.v}%</span></div><div className="bg-slate-100 h-3.5 rounded-full overflow-hidden"><div className="h-full transition-all duration-700" style={{width:`${p.v}%`, backgroundColor: p.c}}></div></div></div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="bg-white p-8 print:p-6 border rounded-3xl shadow-sm h-full flex flex-col font-black no-break">
+                                <h3 className="font-black uppercase text-[1.1rem] xl:text-xl mb-6 print:mb-4 flex items-center gap-3 text-[#15803d] tracking-tight whitespace-nowrap"><Icon name="globe" className="w-7 h-7 shrink-0" /> <span>Learning & Practice Env. Pillar <span className="text-xs xl:text-sm opacity-70 tracking-normal">(D4, D7)</span></span></h3>
+                                <div className="space-y-8 print:space-y-4 text-left">
+                                    {[
+                                    {l: MASTER_LABELS.D4, v: cohortMetrics.domains[3], i: "book-open", c: getPillarColor(MASTER_LABELS.D4)}, 
+                                    {l: MASTER_LABELS.D7, v: cohortMetrics.domains[6], i: "target", c: getPillarColor(MASTER_LABELS.D7)}, 
+                                    {l: MASTER_LABELS.E7_2, v: cohortMetrics.elements[4], i: "shield-check", c: getPillarColor(MASTER_LABELS.E7_2)}
+                                    ].map((p, idx) => (
+                                    <div key={idx}><div className="flex justify-between items-start text-xs font-black uppercase text-slate-500 mb-2 text-left font-black"><div className="flex items-center gap-2"><Icon name={p.i} className="w-5 h-5" style={{color: p.c}} /><span style={{color: (p.c === COLORS.vibrantGreen) ? COLORS.evergreen : ''}}>{p.l}</span></div><span style={{color: (p.c === COLORS.vibrantGreen) ? COLORS.evergreen : ''}}>{p.v}%</span></div><div className="bg-slate-100 h-3.5 rounded-full overflow-hidden"><div className="h-full transition-all duration-700" style={{width:`${p.v}%`, backgroundColor: p.c}}></div></div></div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="bg-[#064e3b] p-8 print:p-6 rounded-3xl shadow-xl border border-[#047857] flex flex-col justify-between font-black text-left print:bg-[#064e3b] no-break">
+                                <div><h4 className="font-black uppercase text-xl mb-6 print:mb-4 text-emerald-300 flex items-center gap-3 font-black"><Icon name="arrow-up-right" className="w-7 h-7" /> CQI Active Worklist</h4>
+                                <div className="space-y-6 print:space-y-4">{[{d:'D6.10: DIGITAL INTELLIGENCE (78%)', t:'Integrate AI-Scribe into PCM 2', s:'Active', b:'bg-cyan-500/20 text-cyan-200 border-cyan-500/30'}, {d:'D7.2: SDOH IMPACT (82%)', t:'Rural Clinic Expansion Study', s:'Measuring', b:'bg-emerald-500/30 text-emerald-100 border-emerald-400/40'}, {d:'D2.1: PATIENT-CENTERED (84%)', t:'Auto-OSCE Dashboards', s:'Fall 2026', b:'bg-purple-400/20 text-purple-200 border-purple-400/30'}, {d:'D4: PBLI IN OMP (84%)', t:'Portfolio Mastery Tracking', s:'Deployment', b:'bg-blue-500/20 text-blue-200 border-blue-500/30'}].map((item, idx) => (
+                                    <div key={idx} className="border-l-2 border-emerald-800 pl-4 font-black"><div className="flex justify-between items-start mb-1 gap-2 text-left font-black"><span className="text-[12px] text-emerald-400 uppercase leading-tight font-black">{item.d}</span><span className={`text-[10px] px-2 py-0.5 rounded border whitespace-nowrap font-black ${item.b}`}>{item.s}</span></div><p className="text-base font-bold text-emerald-50 mt-1 uppercase leading-snug font-black">{item.t}</p></div>
+                                ))}</div>
+                                </div>
+                                <div className="mt-6 pt-4 border-t border-emerald-800/50 flex justify-between items-center text-[13px] font-black text-emerald-300/60 uppercase tracking-[.25em] font-black"><span>{cohortMetrics.cqiTotal} Identified Loops</span><Icon name="check-circle-2" className="w-6 h-6 text-emerald-400" /></div>
+                            </div>
+                        </div>
+                        
+                        <footer className="mt-8 print:mt-6 pt-6 print:pt-4 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-6 text-[13px] font-black text-slate-400 uppercase tracking-widest font-black text-left w-full no-break">
+                            <div className="flex w-full justify-between items-center gap-4">
+                                <span className="flex items-center gap-2 text-emerald-600 bg-emerald-50 px-5 py-2.5 rounded-xl border border-emerald-200 shadow-sm font-black whitespace-nowrap"><span className="relative flex h-2.5 w-2.5"><span className="animate-ping absolute h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative rounded-full h-2.5 w-2.5 bg-emerald-600"></span></span> LIVE DATA SYNC</span>
+                                <span className="flex items-center gap-2 bg-white text-slate-900 px-5 py-2.5 rounded-xl border-2 border-slate-900 shadow-sm font-black whitespace-nowrap"><Icon name="shield-check" className="w-6 h-6 text-emerald-600" /> COCA COMPLIANT SEAL</span>
+                                <span className="text-indigo-600 underline underline-offset-8 decoration-2 decoration-indigo-200 font-black whitespace-nowrap text-right">Inquiry: EUN MI PARK, ED.D.</span>
+                            </div>
+                        </footer>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
